@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Usuários · Secretaria de Esportes{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="bi bi-person-badge-fill me-2"></i>Usuários do Sistema</h1>
+    <p class="text-muted mb-0">Contas de acesso, papéis e turmas de cada professor</p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovo">
+    <i class="bi bi-person-plus-fill me-1"></i>Nova Conta
+  </button>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <input type="text" class="form-control form-control-sm" placeholder="Buscar por nome, e-mail ou cargo..."
+           oninput="filtrarLinhas(this, 'tabela-usuarios')">
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" id="tabela-usuarios">
+      <thead class="table-light">
+        <tr>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Papel</th>
+          <th>Turmas</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr class="linha-busca" data-busca="{{ (u.nome ~ ' ' ~ u.email ~ ' ' ~ (u.cargo_titulo or ''))|lower }}">
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
+                   style="width:36px;height:36px;background:var(--verde-light);color:var(--verde-dark);font-weight:700;">
+                {{ u.nome[0].upper() }}
+              </div>
+              <div>
+                <div class="fw-semibold">{{ u.nome }}</div>
+                {% if u.cargo_titulo %}<div class="text-muted" style="font-size:.72rem">{{ u.cargo_titulo }}{% if u.carga_horaria %} · CH {{ u.carga_horaria }}{% endif %}</div>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="text-muted small">{{ u.email }}</td>
+          <td>
+            <span class="badge {{ 'bg-brand-dourado' if u.cargo == 'admin' else 'bg-verde-soft' }}">
+              {{ 'Administrador' if u.cargo == 'admin' else 'Professor' }}
+            </span>
+          </td>
+          <td class="text-muted small">
+            {% if u.cargo == 'professor' %}
+              {{ turmas_por_usuario.get(u.id, [])|length }} vinculada(s)
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'bg-success' if u.ativo else 'bg-danger' }}">
+              {{ 'Ativo' if u.ativo else 'Inativo' }}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary"
+                    data-bs-toggle="modal" data-bs-target="#modalEditar{{ u.id }}">
+              <i class="bi bi-pencil-fill"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">Nenhum usuário cadastrado ainda.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div id="tabela-usuarios-vazio" class="text-center py-4 text-muted" style="display:none">
+      Nenhum usuário encontrado para essa busca.
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nova Conta -->
+<div class="modal fade" id="modalNovo" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-person-plus-fill me-2"></i>Nova Conta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('professores.usuario_criar') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome completo *</label>
+            <input type="text" name="nome" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">E-mail (login) *</label>
+            <input type="email" name="email" class="form-control" required autocomplete="off">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Telefone</label>
+            <input type="text" name="telefone" class="form-control" placeholder="(65) 9....">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold small">Cargo</label>
+              <input type="text" name="cargo_titulo" class="form-control" placeholder="Ex: Professor - Educação Física">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold small">Carga horária</label>
+              <input type="text" name="carga_horaria" class="form-control" placeholder="Ex: 40">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Senha *</label>
+            <div class="input-group">
+              <input type="password" name="senha" id="senha-nova" class="form-control"
+                     required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+              <button type="button" class="btn btn-outline-secondary" onclick="toggleSenhaCampo('senha-nova', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <hr class="my-3">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Papel *</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="cargo" value="professor"
+                       id="cargo-professor-novo" checked onchange="aplicarPapel(this.closest('.modal'))">
+                <label class="form-check-label" for="cargo-professor-novo">
+                  <i class="bi bi-mortarboard-fill me-1"></i>Professor
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="cargo" value="admin"
+                       id="cargo-admin-novo" onchange="aplicarPapel(this.closest('.modal'))">
+                <label class="form-check-label" for="cargo-admin-novo">
+                  <i class="bi bi-shield-fill me-1"></i>Administrador
+                </label>
+              </div>
+            </div>
+            <div class="form-text text-muted">Administrador tem acesso total. Professor só acessa o que for marcado abaixo.</div>
+          </div>
+          <div class="mb-3 bloco-outros-acessos">
+            <label class="form-label fw-semibold small text-muted mb-2">OUTROS ACESSOS</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="acesso_ficha_bordo" value="1" id="ficha-bordo-nova">
+              <label class="form-check-label" for="ficha-bordo-nova">
+                <i class="bi bi-truck me-1"></i>Ficha de Bordo (uso de veículos)
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="acesso_espacos" value="1" id="espacos-nova">
+              <label class="form-check-label" for="espacos-nova">
+                <i class="bi bi-calendar-week me-1"></i>Agendamento de Espaço
+              </label>
+            </div>
+            <div class="form-text text-muted">Desmarcados por padrão — o professor só vê essas abas se você marcar aqui.</div>
+          </div>
+          <div class="mb-2 bloco-turmas">
+            <label class="form-label fw-semibold">Sessões disponíveis (turmas)</label>
+            <div class="form-text text-muted mb-2">Marque as turmas que este professor pode acessar (cadastrar aluno e fazer chamada).</div>
+            {% if turmas %}
+            <input type="text" class="form-control form-control-sm mb-2" placeholder="Buscar turma..."
+                   oninput="filtrarTurmas(this, 'lista-turmas-nova')">
+            <div class="row g-1 turmas-scroll" id="lista-turmas-nova">
+              {% for t in turmas %}
+              <div class="col-6 item-turma" data-busca="{{ t.nome|lower }}">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="turmas" value="{{ t.id }}" id="turma-nova-{{ t.id }}">
+                  <label class="form-check-label small" for="turma-nova-{{ t.id }}">{{ t.nome }}</label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-muted small">Nenhuma turma cadastrada ainda — crie turmas em "Turmas" primeiro.</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Criar Conta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modais de edição -->
+{% for u in usuarios %}
+<div class="modal fade" id="modalEditar{{ u.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold">Editar — {{ u.nome }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('professores.usuario_editar', uid=u.id) }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome *</label>
+            <input type="text" name="nome" class="form-control" value="{{ u.nome }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">E-mail (login) *</label>
+            <input type="email" name="email" class="form-control" value="{{ u.email }}" required autocomplete="off">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Telefone</label>
+            <input type="text" name="telefone" class="form-control" value="{{ u.telefone or '' }}">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold small">Cargo</label>
+              <input type="text" name="cargo_titulo" class="form-control" value="{{ u.cargo_titulo or '' }}">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold small">Carga horária</label>
+              <input type="text" name="carga_horaria" class="form-control" value="{{ u.carga_horaria or '' }}">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nova senha</label>
+            <div class="input-group">
+              <input type="password" name="nova_senha" id="nova-senha-{{ u.id }}" class="form-control"
+                     minlength="6" autocomplete="new-password" placeholder="Deixe em branco para não alterar">
+              <button type="button" class="btn btn-outline-secondary" onclick="toggleSenhaCampo('nova-senha-{{ u.id }}', this)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <hr class="my-3">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Papel *</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="cargo" value="professor"
+                       id="cargo-professor-{{ u.id }}" {{ 'checked' if u.cargo == 'professor' }}
+                       onchange="aplicarPapel(this.closest('.modal'))">
+                <label class="form-check-label" for="cargo-professor-{{ u.id }}">
+                  <i class="bi bi-mortarboard-fill me-1"></i>Professor
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="cargo" value="admin"
+                       id="cargo-admin-{{ u.id }}" {{ 'checked' if u.cargo == 'admin' }}
+                       onchange="aplicarPapel(this.closest('.modal'))">
+                <label class="form-check-label" for="cargo-admin-{{ u.id }}">
+                  <i class="bi bi-shield-fill me-1"></i>Administrador
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3 bloco-outros-acessos">
+            <label class="form-label fw-semibold small text-muted mb-2">OUTROS ACESSOS</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="acesso_ficha_bordo" value="1"
+                     id="ficha-bordo-{{ u.id }}" {{ 'checked' if u.acesso_ficha_bordo }}>
+              <label class="form-check-label" for="ficha-bordo-{{ u.id }}">
+                <i class="bi bi-truck me-1"></i>Ficha de Bordo (uso de veículos)
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="acesso_espacos" value="1"
+                     id="espacos-{{ u.id }}" {{ 'checked' if u.acesso_espacos }}>
+              <label class="form-check-label" for="espacos-{{ u.id }}">
+                <i class="bi bi-calendar-week me-1"></i>Agendamento de Espaço
+              </label>
+            </div>
+          </div>
+          <div class="mb-2 bloco-turmas">
+            <label class="form-label fw-semibold">Sessões disponíveis (turmas)</label>
+            {% if turmas %}
+            <input type="text" class="form-control form-control-sm mb-2" placeholder="Buscar turma..."
+                   oninput="filtrarTurmas(this, 'lista-turmas-{{ u.id }}')">
+            <div class="row g-1 turmas-scroll" id="lista-turmas-{{ u.id }}">
+              {% for t in turmas %}
+              <div class="col-6 item-turma" data-busca="{{ t.nome|lower }}">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="turmas" value="{{ t.id }}"
+                         id="turma-{{ u.id }}-{{ t.id }}"
+                         {% if t.id in turmas_por_usuario.get(u.id, []) %}checked{% endif %}>
+                  <label class="form-check-label small" for="turma-{{ u.id }}-{{ t.id }}">{{ t.nome }}</label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-muted small">Nenhuma turma cadastrada ainda.</div>
+            {% endif %}
+          </div>
+          <hr class="my-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ativo" value="1"
+                   id="ativo-{{ u.id }}" {{ 'checked' if u.ativo }}>
+            <label class="form-check-label" for="ativo-{{ u.id }}">Conta ativa</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSenhaCampo(id, btn) {
+  var input = document.getElementById(id);
+  var icone = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icone.classList.replace('bi-eye', 'bi-eye-slash');
+  } else {
+    input.type = 'password';
+    icone.classList.replace('bi-eye-slash', 'bi-eye');
+  }
+}
+
+function aplicarPapel(modal) {
+  if (!modal) return;
+  var checked = modal.querySelector('input[name="cargo"]:checked');
+  if (!checked) return;
+  var isAdmin = checked.value === 'admin';
+  ['.bloco-turmas', '.bloco-outros-acessos'].forEach(function (sel) {
+    var bloco = modal.querySelector(sel);
+    if (!bloco) return;
+    bloco.style.display = isAdmin ? 'none' : '';
+    bloco.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.disabled = isAdmin; });
+  });
+}
+
+document.querySelectorAll('.modal').forEach(function (modal) {
+  modal.addEventListener('shown.bs.modal', function () { aplicarPapel(modal); });
+});
+
+function filtrarTurmas(campo, listaId) {
+  var termo = campo.value.trim().toLowerCase();
+  document.getElementById(listaId).querySelectorAll('.item-turma').forEach(function (item) {
+    item.style.display = item.dataset.busca.indexOf(termo) !== -1 ? '' : 'none';
+  });
+}
+
+function filtrarLinhas(campo, tabelaId) {
+  var termo = campo.value.trim().toLowerCase();
+  var linhas = document.querySelectorAll('#' + tabelaId + ' .linha-busca');
+  var visiveis = 0;
+  linhas.forEach(function (linha) {
+    var bate = linha.dataset.busca.indexOf(termo) !== -1;
+    linha.style.display = bate ? '' : 'none';
+    if (bate) visiveis++;
+  });
+  var vazio = document.getElementById(tabelaId + '-vazio');
+  if (vazio) vazio.style.display = (linhas.length && visiveis === 0) ? '' : 'none';
+}
+</script>
+
+<style>
+  .turmas-scroll { max-height: 260px; overflow-y: auto; overflow-x: hidden; padding-right: .25rem; }
+</style>
+{% endblock %}

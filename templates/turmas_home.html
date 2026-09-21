@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% block title %}Turmas · Secretaria de Esportes{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="bi bi-grid-fill me-2"></i>{{ 'Turmas' if modo == 'admin' else 'Minhas Turmas' }}</h1>
+    <p class="text-muted mb-0">
+      {% if modo == 'admin' %}{{ turmas|length }} turma(s) cadastrada(s){% else %}Escolha uma turma para cadastrar alunos ou fazer a chamada{% endif %}
+    </p>
+  </div>
+  {% if modo == 'admin' %}
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaTurma">
+    <i class="bi bi-plus-lg me-1"></i>Nova Turma
+  </button>
+  {% endif %}
+</div>
+
+{% if not turmas %}
+<div class="card shadow-sm">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-grid fs-2 d-block mb-2 text-muted"></i>
+    {% if modo == 'admin' %}
+      <p class="text-muted mb-0">Nenhuma turma cadastrada ainda.</p>
+    {% else %}
+      <p class="text-muted mb-1 fw-semibold">Você ainda não está vinculado a nenhuma turma.</p>
+      <p class="text-muted small">Peça ao administrador para vincular sua conta a uma turma em Usuários.</p>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+
+{% macro cartao_turma(t) %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm h-100 border-0" style="border-radius:14px">
+      <div class="card-body pb-2">
+        <div class="d-flex align-items-start justify-content-between mb-1">
+          <div class="fw-bold" style="color:var(--verde-dark)">{{ t.nome }}</div>
+          {% if not t.ativo %}<span class="badge bg-secondary">Inativa</span>{% endif %}
+        </div>
+        {% if t.local %}<div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ t.local }}</div>{% endif %}
+        {% if t.dias_semana or t.hora_inicio %}
+        <div class="text-muted small mb-2">
+          <i class="bi bi-clock me-1"></i>
+          {% if t.dias_semana %}{% for d in t.dias_semana.split(',') %}{{ DIA_LABEL.get(d, d) }}{% if not loop.last %} · {% endif %}{% endfor %}{% endif %}
+          {% if t.hora_inicio %} — {{ t.hora_inicio }}{% if t.hora_fim %} às {{ t.hora_fim }}{% endif %}{% endif %}
+        </div>
+        {% endif %}
+        <div class="mb-2 d-flex align-items-center gap-2">
+          <span class="badge bg-dourado-soft"><i class="bi bi-people-fill me-1"></i>{{ t.qtd_alunos }} aluno(s)</span>
+          {% if t.foto_hoje %}
+          <a href="{{ url_for('arquivos', filename=t.foto_hoje.foto) }}" target="_blank" rel="noopener" title="Ver foto do dia">
+            <img src="{{ url_for('arquivos', filename=t.foto_hoje.foto) }}"
+                 style="width:26px;height:26px;object-fit:cover;border-radius:6px;border:1.5px solid var(--verde)">
+          </a>
+          {% endif %}
+        </div>
+        {% if modo == 'admin' %}
+        <div class="text-muted small mb-2">
+          {% if t.professores %}
+            <i class="bi bi-person-fill me-1"></i>{{ t.professores|map(attribute='nome')|join(', ') }}
+          {% else %}
+            <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Sem professor vinculado</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-top-0 pt-0 pb-3 px-3">
+        <div class="d-flex gap-1 flex-wrap">
+          <a href="{{ url_for('turmas.alunos', tid=t.id) }}" class="btn btn-sm btn-outline-primary flex-fill">
+            <i class="bi bi-people-fill me-1"></i>Alunos
+          </a>
+          <a href="{{ url_for('turmas.chamada', tid=t.id) }}" class="btn btn-sm btn-primary flex-fill">
+            <i class="bi bi-clipboard-check-fill me-1"></i>Chamada
+          </a>
+          <button class="btn btn-sm {{ 'btn-outline-secondary' if t.foto_hoje else 'btn-gold' }}"
+                  data-bs-toggle="modal" data-bs-target="#modalFoto{{ t.id }}" title="Foto do dia">
+            <i class="bi bi-camera-fill"></i>
+          </button>
+          {% if modo == 'admin' %}
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditarTurma{{ t.id }}" title="Editar turma">
+            <i class="bi bi-pencil-fill"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalVincular{{ t.id }}" title="Vincular professores">
+            <i class="bi bi-person-lines-fill"></i>
+          </button>
+          <form method="post" action="{{ url_for('turmas.excluir', tid=t.id) }}" class="d-inline form-excluir-turma"
+                data-confirm-msg="{{ ('A turma \"' ~ t.nome ~ '\" tem ' ~ t.qtd_alunos ~ ' aluno(s) cadastrado(s) e o histórico de chamadas deles. Excluir apaga tudo isso PERMANENTEMENTE. Tem certeza?') if t.qtd_alunos else ('Excluir a turma \"' ~ t.nome ~ '\"? Essa ação não pode ser desfeita.') }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir turma">
+              <i class="bi bi-trash3-fill"></i>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+<!-- Caixinhas por modalidade -->
+<div class="row g-3">
+  {% for modalidade, itens in grupos.items() %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm border-0 modalidade-box" style="border-radius:14px"
+         data-bs-toggle="collapse" data-bs-target="#grupo-{{ loop.index }}" role="button"
+         aria-expanded="false" aria-controls="grupo-{{ loop.index }}">
+      <div class="card-body d-flex align-items-center justify-content-between py-3">
+        <div>
+          <div class="fw-bold" style="color:var(--verde-dark)">{{ modalidade }}</div>
+          <div class="text-muted small">{{ itens|length }} turma{{ 's' if itens|length != 1 }} · {{ itens|sum(attribute='qtd_alunos') }} aluno(s)</div>
+        </div>
+        <i class="bi bi-chevron-down modalidade-chevron"></i>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Turmas de cada modalidade (expande ao clicar na caixinha) -->
+{% for modalidade, itens in grupos.items() %}
+<div class="collapse mt-3" id="grupo-{{ loop.index }}">
+  <div class="d-flex align-items-center gap-2 mb-2 text-muted small">
+    <i class="bi bi-arrow-return-right"></i>
+    <span>Turmas de <strong>{{ modalidade }}</strong></span>
+  </div>
+  <div class="row g-3 mb-1">
+    {% for t in itens %}{{ cartao_turma(t) }}{% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<style>
+  .modalidade-box { cursor: pointer; transition: box-shadow .15s, background .15s; }
+  .modalidade-box:hover { box-shadow: var(--shadow-sm); }
+  .modalidade-box[aria-expanded="true"] { background: var(--verde-light); }
+  .modalidade-chevron { color: var(--verde); font-size: 1.05rem; transition: transform .18s; flex-shrink: 0; }
+  .modalidade-box[aria-expanded="true"] .modalidade-chevron { transform: rotate(180deg); }
+</style>
+
+{% if modo == 'admin' %}
+<!-- Modal Nova Turma -->
+<div class="modal fade" id="modalNovaTurma" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-plus-lg me-2"></i>Nova Turma</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('turmas.criar') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome da turma *</label>
+            <input type="text" name="nome" class="form-control" required placeholder="Ex: Futsal Infantil - CDC Pascoal Ramos">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Modalidade</label>
+            <input type="text" name="modalidade" class="form-control" list="lista-modalidades" placeholder="Ex: Futebol">
+            <datalist id="lista-modalidades">
+              {% for m in MODALIDADES_SUGERIDAS %}<option value="{{ m }}">{% endfor %}
+            </datalist>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Local</label>
+            <input type="text" name="local" class="form-control" placeholder="Ex: Ginásio Municipal">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Dias da semana</label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for cod, label in DIAS_SEMANA %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="dias_semana" value="{{ cod }}" id="dia-novo-{{ cod }}">
+                <label class="form-check-label small" for="dia-novo-{{ cod }}">{{ label }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col">
+              <label class="form-label fw-semibold small">Horário início</label>
+              <input type="time" name="hora_inicio" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold small">Horário fim</label>
+              <input type="time" name="hora_fim" class="form-control">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Criar Turma</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% for t in turmas %}
+<!-- Modal Editar Turma -->
+<div class="modal fade" id="modalEditarTurma{{ t.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold">Editar — {{ t.nome }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('turmas.editar', tid=t.id) }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome da turma *</label>
+            <input type="text" name="nome" class="form-control" value="{{ t.nome }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Modalidade</label>
+            <input type="text" name="modalidade" class="form-control" value="{{ t.modalidade or '' }}" list="lista-modalidades-{{ t.id }}">
+            <datalist id="lista-modalidades-{{ t.id }}">
+              {% for m in MODALIDADES_SUGERIDAS %}<option value="{{ m }}">{% endfor %}
+            </datalist>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Local</label>
+            <input type="text" name="local" class="form-control" value="{{ t.local or '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Dias da semana</label>
+            <div class="d-flex flex-wrap gap-2">
+              {% set dias_atuais = (t.dias_semana or '').split(',') %}
+              {% for cod, label in DIAS_SEMANA %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="dias_semana" value="{{ cod }}"
+                       id="dia-{{ t.id }}-{{ cod }}" {{ 'checked' if cod in dias_atuais }}>
+                <label class="form-check-label small" for="dia-{{ t.id }}-{{ cod }}">{{ label }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold small">Horário início</label>
+              <input type="time" name="hora_inicio" class="form-control" value="{{ t.hora_inicio or '' }}">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold small">Horário fim</label>
+              <input type="time" name="hora_fim" class="form-control" value="{{ t.hora_fim or '' }}">
+            </div>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ativo" value="1" id="turma-ativa-{{ t.id }}" {{ 'checked' if t.ativo }}>
+            <label class="form-check-label" for="turma-ativa-{{ t.id }}">Turma ativa</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Vincular Professores -->
+<div class="modal fade" id="modalVincular{{ t.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-person-lines-fill me-2"></i>Professores — {{ t.nome }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('turmas.vincular_professores', tid=t.id) }}">
+        <div class="modal-body">
+          {% set vinculados_ids = t.professores|map(attribute='id')|list %}
+          {% if todos_professores %}
+            {% for p in todos_professores %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="professores" value="{{ p.id }}"
+                     id="prof-{{ t.id }}-{{ p.id }}" {{ 'checked' if p.id in vinculados_ids }}>
+              <label class="form-check-label" for="prof-{{ t.id }}-{{ p.id }}">{{ p.nome }}</label>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted small mb-0">Nenhum professor cadastrado ainda.</p>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Salvar Vínculos</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Modais de Foto do Dia (disponível para admin e professor) -->
+{% for t in turmas %}
+<div class="modal fade" id="modalFoto{{ t.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-camera-fill me-2"></i>Foto do Dia — {{ t.nome }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('turmas.registrar_foto', tid=t.id) }}" enctype="multipart/form-data">
+        <div class="modal-body">
+          {% if t.foto_hoje %}
+          <div class="mb-3 text-center">
+            <img src="{{ url_for('arquivos', filename=t.foto_hoje.foto) }}" class="img-fluid rounded border" style="max-height:220px">
+            <div class="form-text text-muted">Já registrada hoje — enviar uma nova substitui esta.</div>
+          </div>
+          {% endif %}
+          <label class="form-label fw-semibold">Foto da turma/aula de hoje ({{ hoje }}) *</label>
+          <input type="file" name="foto" class="form-control" accept="image/jpeg,image/png,image/webp"
+                 capture="environment" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Salvar Foto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.form-excluir-turma').forEach(function (form) {
+  form.addEventListener('submit', function (e) {
+    if (!confirm(form.dataset.confirmMsg)) e.preventDefault();
+  });
+});
+</script>
+{% endblock %}

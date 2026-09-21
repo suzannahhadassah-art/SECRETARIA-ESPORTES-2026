@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Chamadas Realizadas · Secretaria de Esportes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="bi bi-clipboard-check-fill me-2"></i>Chamadas Realizadas</h1>
+  <p class="text-muted mb-0">{{ resumo|length }} chamada(s) registrada(s)</p>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">Turma</label>
+        <select name="turma_id" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">— Todas —</option>
+          {% for t in turmas %}
+          <option value="{{ t.id }}" {{ 'selected' if turma_id == t.id }}>{{ t.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">De</label>
+        <input type="date" name="data_inicio" value="{{ data_inicio or '' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">Até</label>
+        <input type="date" name="data_fim" value="{{ data_fim or '' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel-fill me-1"></i>Filtrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Turma</th><th>Data</th>
+          <th class="text-center text-success">Presentes</th>
+          <th class="text-center text-danger">Ausentes</th>
+          <th class="text-center text-warning">Justificadas</th>
+          <th class="text-center">Frequência</th>
+          <th>Registrada por</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resumo %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="{{ url_for('turmas.chamada', tid=r.turma_id, data=r.data) }}">{{ r.turma_nome }}</a>
+          </td>
+          <td>{{ r.data }}</td>
+          <td class="text-center text-success fw-semibold">{{ r.presentes }}</td>
+          <td class="text-center text-danger fw-semibold">{{ r.ausentes }}</td>
+          <td class="text-center text-warning fw-semibold">{{ r.justificadas }}</td>
+          <td class="text-center">
+            {{ ((r.presentes / r.total * 100) | round | int) if r.total else 0 }}%
+          </td>
+          <td class="text-muted small">{{ r.registrado_por_nome or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma chamada registrada ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

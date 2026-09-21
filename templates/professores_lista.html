@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Professores · Secretaria de Esportes{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="page-title"><i class="bi bi-people-fill me-2"></i>Professores</h1>
+    <p class="text-muted mb-0">{{ professores|length }} professor(es) cadastrado(s)</p>
+  </div>
+  <a href="{{ url_for('professores.usuarios') }}" class="btn btn-primary">
+    <i class="bi bi-person-plus-fill me-1"></i>Novo Professor
+  </a>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <input type="text" class="form-control form-control-sm" placeholder="Buscar por nome, cargo ou e-mail..."
+           oninput="filtrarLinhas(this, 'tabela-professores')">
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" id="tabela-professores">
+      <thead class="table-light">
+        <tr>
+          <th>Nome</th>
+          <th>Cargo</th>
+          <th>CH</th>
+          <th>E-mail</th>
+          <th>Telefone</th>
+          <th>Turmas vinculadas</th>
+          <th>Último ponto</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in professores %}
+        <tr class="linha-busca" data-busca="{{ (p.nome ~ ' ' ~ (p.cargo_titulo or '') ~ ' ' ~ p.email)|lower }}">
+          <td class="fw-semibold">{{ p.nome }}</td>
+          <td class="text-muted small">{{ p.cargo_titulo or '—' }}</td>
+          <td class="text-muted small">{{ p.carga_horaria or '—' }}</td>
+          <td class="text-muted small">{{ p.email }}</td>
+          <td class="text-muted small">{{ p.telefone or '—' }}</td>
+          <td>
+            {% if p.qtd_turmas %}
+              <span class="badge bg-verde-soft">{{ p.qtd_turmas }} turma(s)</span>
+            {% else %}
+              <span class="text-muted small">Nenhuma</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">
+            {% if p.ultimo_ponto_data %}{{ p.ultimo_ponto_data }}{% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'bg-success' if p.ativo else 'bg-danger' }}">
+              {{ 'Ativo' if p.ativo else 'Inativo' }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">
+            <i class="bi bi-people d-block fs-3 mb-1"></i>
+            Nenhum professor cadastrado ainda.
+            <div class="mt-2">
+              <a href="{{ url_for('professores.usuarios') }}">Cadastrar o primeiro professor</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div id="tabela-professores-vazio" class="text-center py-4 text-muted" style="display:none">
+      Nenhum professor encontrado para essa busca.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filtrarLinhas(campo, tabelaId) {
+  var termo = campo.value.trim().toLowerCase();
+  var linhas = document.querySelectorAll('#' + tabelaId + ' .linha-busca');
+  var visiveis = 0;
+  linhas.forEach(function (linha) {
+    var bate = linha.dataset.busca.indexOf(termo) !== -1;
+    linha.style.display = bate ? '' : 'none';
+    if (bate) visiveis++;
+  });
+  var vazio = document.getElementById(tabelaId + '-vazio');
+  if (vazio) vazio.style.display = (linhas.length && visiveis === 0) ? '' : 'none';
+}
+</script>
+{% endblock %}

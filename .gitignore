@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# Dados reais NUNCA vão para o GitHub: banco de dados e fotos enviadas
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+uploads/
+
+# Segredos e configuração local
+.env
+.env.*
+.claude/settings.local.json
+
+# Programa grande baixado à parte e arquivos temporários do acesso externo
+cloudflared.exe
+cloudflared_log.txt
+link_acesso.txt

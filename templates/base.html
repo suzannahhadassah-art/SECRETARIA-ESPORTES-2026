@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Secretaria de Esportes e Lazer{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+{% set u = usuario_atual() %}
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Secretaria de Esportes e Lazer">
+    <span>Secretaria de<br>Esportes e Lazer</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">Gestão de Professores</div>
+
+    {% if u and u.cargo == 'admin' %}
+      <a href="{{ url_for('professores.lista') }}" class="nav-link {% if request.endpoint == 'professores.lista' %}active{% endif %}">
+        <i class="bi bi-people-fill"></i> <span>Professores</span>
+      </a>
+      <a href="{{ url_for('professores.usuarios') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('professores.usuario') %}active{% endif %}">
+        <i class="bi bi-person-badge-fill"></i> <span>Usuários</span>
+      </a>
+      <a href="{{ url_for('turmas.home') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('turmas.') and 'chamadas_realizadas' not in request.endpoint %}active{% endif %}">
+        <i class="bi bi-grid-fill"></i> <span>Turmas</span>
+      </a>
+      <a href="{{ url_for('turmas.chamadas_realizadas') }}" class="nav-link {% if request.endpoint == 'turmas.chamadas_realizadas' %}active{% endif %}">
+        <i class="bi bi-clipboard-check-fill"></i> <span>Chamadas Realizadas</span>
+      </a>
+      <a href="{{ url_for('professores.ponto_relatorio') }}" class="nav-link {% if request.endpoint == 'professores.ponto_relatorio' %}active{% endif %}">
+        <i class="bi bi-clock-history"></i> <span>Relatório de Ponto</span>
+      </a>
+      <a href="{{ url_for('professores.ponto') }}" class="nav-link {% if request.endpoint == 'professores.ponto' %}active{% endif %}">
+        <i class="bi bi-clock-fill"></i> <span>Meu Ponto</span>
+      </a>
+    {% else %}
+      <a href="{{ url_for('turmas.home') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('turmas.') %}active{% endif %}">
+        <i class="bi bi-grid-fill"></i> <span>Minhas Turmas</span>
+      </a>
+      <a href="{{ url_for('professores.ponto') }}" class="nav-link {% if request.endpoint == 'professores.ponto' %}active{% endif %}">
+        <i class="bi bi-clock-fill"></i> <span>Bater Ponto</span>
+      </a>
+    {% endif %}
+
+    {% if u and (u.cargo == 'admin' or u.acesso_ficha_bordo) %}
+    <div class="sidebar-section-label">Ficha de Bordo</div>
+    <a href="{{ url_for('ficha_bordo.home') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('ficha_bordo.') %}active{% endif %}">
+      <i class="bi bi-truck"></i> <span>Uso de Veículos</span>
+    </a>
+    {% endif %}
+
+    {% if u and (u.cargo == 'admin' or u.acesso_espacos) %}
+    <div class="sidebar-section-label">Espaços</div>
+    <span class="nav-link disabled" title="Em breve">
+      <span><i class="bi bi-calendar-week"></i> <span>Agendamento de Espaço</span></span>
+      <span class="badge-em-breve">Em breve</span>
+    </span>
+    {% endif %}
+  </nav>
+
+  {% if u %}
+  <div class="sidebar-user">
+    <div class="d-flex align-items-center gap-2">
+      <div class="sidebar-avatar">{{ u.nome[0].upper() }}</div>
+      <div class="overflow-hidden flex-grow-1">
+        <div class="small fw-semibold text-truncate" style="color:var(--text-dark);">{{ u.nome }}</div>
+        <div class="text-muted" style="font-size:.7rem;">{{ 'Administrador' if u.cargo == 'admin' else 'Professor' }}</div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-icon-btn" title="Sair">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-3">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+  <footer class="creator-footer">
+    Secretaria de Esportes e Lazer · Prefeitura de Cuiabá
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

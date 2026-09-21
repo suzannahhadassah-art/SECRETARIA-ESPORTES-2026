@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Alunos · {{ turma.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('turmas.home') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <div>
+      <h1 class="page-title mb-0"><i class="bi bi-people-fill me-2"></i>Alunos — {{ turma.nome }}</h1>
+      <p class="text-muted mb-0 small">{{ alunos|length }} aluno(s) cadastrado(s)</p>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('turmas.chamada', tid=turma.id) }}" class="btn btn-outline-primary">
+      <i class="bi bi-clipboard-check-fill me-1"></i>Fazer Chamada
+    </a>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoAluno">
+      <i class="bi bi-person-plus-fill me-1"></i>Cadastrar Aluno
+    </button>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>Responsável</th>
+          <th>Nasc.</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in alunos %}
+        <tr>
+          <td class="fw-semibold">{{ a.nome }}</td>
+          <td class="text-muted small">{{ a.telefone or '—' }}</td>
+          <td class="text-muted small">
+            {{ a.responsavel_nome or '—' }}{% if a.responsavel_telefone %} · {{ a.responsavel_telefone }}{% endif %}
+          </td>
+          <td class="text-muted small">{{ a.data_nasc or '—' }}</td>
+          <td>
+            <span class="badge {{ 'bg-success' if a.ativo else 'bg-secondary' }}">{{ 'Ativo' if a.ativo else 'Inativo' }}</span>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditarAluno{{ a.id }}">
+              <i class="bi bi-pencil-fill"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">
+            <i class="bi bi-people d-block fs-3 mb-1"></i>Nenhum aluno cadastrado ainda nesta turma.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Cadastrar Aluno (a "Ficha de Bordo" — nome do aluno para entrar na chamada) -->
+<div class="modal fade" id="modalNovoAluno" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-person-plus-fill me-2"></i>Cadastrar Aluno</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('turmas.aluno_criar', tid=turma.id) }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome completo *</label>
+            <input type="text" name="nome" class="form-control" required autofocus placeholder="Nome do aluno">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Telefone</label>
+            <input type="text" name="telefone" class="form-control" placeholder="(65) 9....">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold small">Nome do responsável</label>
+              <input type="text" name="responsavel_nome" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold small">Telefone do responsável</label>
+              <input type="text" name="responsavel_telefone" class="form-control">
+            </div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold small">Data de nascimento</label>
+            <input type="date" name="data_nasc" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Cadastrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% for a in alunos %}
+<div class="modal fade" id="modalEditarAluno{{ a.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold">Editar — {{ a.nome }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('turmas.aluno_editar', aid=a.id) }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nome *</label>
+            <input type="text" name="nome" class="form-control" value="{{ a.nome }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Telefone</label>
+            <input type="text" name="telefone" class="form-control" value="{{ a.telefone or '' }}">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold small">Nome do responsável</label>
+              <input type="text" name="responsavel_nome" class="form-control" value="{{ a.responsavel_nome or '' }}">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold small">Telefone do responsável</label>
+              <input type="text" name="responsavel_telefone" class="form-control" value="{{ a.responsavel_telefone or '' }}">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Data de nascimento</label>
+            <input type="date" name="data_nasc" class="form-control" value="{{ a.data_nasc or '' }}">
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ativo" value="1" id="aluno-ativo-{{ a.id }}" {{ 'checked' if a.ativo }}>
+            <label class="form-check-label" for="aluno-ativo-{{ a.id }}">Aluno ativo</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save-fill me-1"></i>Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

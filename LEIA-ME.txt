@@ -1,0 +1,118 @@
+========================================================
+ SISTEMA DA SECRETARIA DE ESPORTES E LAZER — PREFEITURA DE CUIABÁ
+========================================================
+
+ACESSO NA INTERNET (Railway)
+-----------------------
+https://sistema-secretaria-de-esportes-production.up.railway.app
+
+Hospedado no Railway, projeto "Sistema Secretaria de Esportes" (conta
+Railway usada pela secretaria). Lá é possível ver os logs, reiniciar o
+sistema e conferir o armazenamento.
+
+A conta de administrador é criada automaticamente na primeira vez que o
+sistema sobe num banco vazio, com o e-mail e a senha das variáveis
+ADMIN_EMAIL_PADRAO e ADMIN_SENHA_PADRAO (Railway > serviço > Variables).
+Depois de entrar, troque a senha em "Usuários". A senha NÃO fica escrita
+neste arquivo nem no GitHub, de propósito.
+
+Variáveis do Railway que o sistema usa:
+  SECRET_KEY          chave que assina as sessões de login (texto longo e aleatório)
+  ADMIN_EMAIL_PADRAO  e-mail do primeiro administrador
+  ADMIN_SENHA_PADRAO  senha inicial do primeiro administrador
+  DATA_ROOT           /data  (pasta do volume onde ficam o banco e as fotos)
+
+ARMAZENAMENTO PERSISTENTE: o volume do Railway está montado em /data. O
+banco de dados (smesp.db) e as fotos enviadas (pasta "uploads") ficam lá
+e sobrevivem a novos deploys. Se um dia for recriar o projeto do zero, é
+preciso criar o volume com mount path /data e definir DATA_ROOT=/data,
+senão os dados somem a cada atualização.
+
+
+COMO INICIAR O SISTEMA LOCALMENTE (no seu computador)
+-----------------------
+Dê 2 cliques em "iniciar.bat". Uma janela preta vai abrir (não feche!) e o
+navegador vai abrir sozinho em http://localhost:5000
+
+Para encerrar, basta fechar a janela preta.
+
+Primeiro acesso local (banco novo, diferente do banco da versão online):
+E-mail: ebutakka@gmail.com
+Senha:  esportes2026
+
+Troque essa senha assim que entrar: menu "Usuários" > clique no lápis ao
+lado da sua conta > "Nova senha".
+
+
+COMO CADASTRAR UM PROFESSOR
+-----------------------
+1. Menu "Usuários" > "Nova Conta"
+2. Preencha nome, e-mail, telefone e uma senha (é o que o professor vai
+   usar para entrar)
+3. Marque "Professor" e selecione as turmas que ele pode acessar
+   ("Sessões disponíveis"). Em "Outros acessos" dá para liberar, professor
+   por professor, a Ficha de Bordo (uso de veículos) e o Agendamento de
+   Espaço — por padrão eles ficam escondidos.
+
+O professor só vai conseguir bater ponto e acessar o que foi marcado.
+
+
+COMO CRIAR UMA TURMA
+-----------------------
+Menu "Turmas" > "Nova Turma". Depois de criada, clique no ícone de pessoas
+para vincular os professores que vão dar aula nessa turma.
+
+
+ACESSO DE QUALQUER LUGAR (fora da rede da secretaria)
+-----------------------
+Dê 2 cliques em "iniciar_acesso_externo.ps1" (ou clique com o botão direito
+e escolha "Executar com PowerShell"). Um link público vai aparecer e será
+copiado automaticamente — envie esse link para os professores.
+
+Esse recurso usa o programa "cloudflared.exe" (não vai para o GitHub por ser
+um arquivo grande). Se ele não estiver na pasta, baixe do site da Cloudflare
+e coloque aqui ao lado do iniciar.bat.
+
+IMPORTANTE: esse link muda toda vez que você reinicia o programa, e só
+funciona enquanto a janela ficar aberta.
+
+
+ESQUECI A SENHA DO ADMINISTRADOR (versão local)
+-----------------------
+Dê 2 cliques em "reset_senha.py" (ou abra um terminal na pasta e rode
+"python reset_senha.py"). A senha volta a ser "esportes2026".
+
+
+BACKUP DOS DADOS
+-----------------------
+Versão local: todos os dados ficam no arquivo "smesp.db", nesta mesma pasta
+(e as fotos na pasta "uploads"). Para fazer backup, copie esse arquivo e essa
+pasta para outro lugar (pendrive, nuvem etc.) — de preferência com o sistema
+fechado.
+
+Versão online: os dados ficam no volume do Railway (/data), não neste
+computador.
+
+
+O QUE ESTÁ (E O QUE NÃO ESTÁ) NO GITHUB
+-----------------------
+No GitHub fica o CÓDIGO do sistema: telas, regras, scripts de iniciar e a
+documentação. NÃO ficam lá, de propósito:
+  - o banco de dados (smesp.db) e as fotos enviadas — contêm dados pessoais
+    de servidores e alunos e nunca devem ir para um repositório;
+  - senhas e chaves (ficam só nas variáveis do Railway);
+  - o cloudflared.exe (programa grande, baixado à parte).
+
+Para colocar o sistema para rodar num computador novo a partir do GitHub:
+  1. Baixe (clone) o repositório e instale o Python 3.12
+  2. Na pasta do projeto, rode:  pip install -r requirements.txt
+  3. Dê 2 cliques em iniciar.bat — o sistema cria um banco vazio e a conta
+     de administrador do primeiro acesso local (veja acima)
+Para trazer os dados de volta, copie o backup do smesp.db (e da pasta
+uploads) para a pasta do projeto antes de iniciar.
+
+
+DÚVIDAS OU PROBLEMAS
+-----------------------
+Sistema desenvolvido para a Secretaria de Esportes e Lazer da Prefeitura
+de Cuiabá.

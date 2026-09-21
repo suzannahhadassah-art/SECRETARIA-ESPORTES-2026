@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Relatório de Ponto · Secretaria de Esportes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title"><i class="bi bi-clock-history me-2"></i>Relatório de Ponto</h1>
+  <p class="text-muted mb-0">{{ registros|length }} registro(s)</p>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">Professor</label>
+        <select name="usuario_id" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">— Todos —</option>
+          {% for p in professores %}
+          <option value="{{ p.id }}" {{ 'selected' if usuario_id == p.id }}>{{ p.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">De</label>
+        <input type="date" name="data_inicio" value="{{ data_inicio or '' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small fw-semibold mb-1">Até</label>
+        <input type="date" name="data_fim" value="{{ data_fim or '' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel-fill me-1"></i>Filtrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Professor</th><th>Data</th><th>Entrada</th><th>Saída</th><th>Localização</th></tr>
+      </thead>
+      <tbody>
+        {% for r in registros %}
+        <tr>
+          <td class="fw-semibold">{{ r.usuario_nome }}</td>
+          <td>{{ r.data }}</td>
+          <td class="text-muted small">{{ r.hora_entrada or '—' }}</td>
+          <td class="text-muted small">{{ r.hora_saida or '—' }}</td>
+          <td class="text-muted small">
+            {% if r.lat_entrada and r.lng_entrada %}
+              <a href="https://www.google.com/maps?q={{ r.lat_entrada }},{{ r.lng_entrada }}" target="_blank" rel="noopener">
+                <i class="bi bi-geo-alt-fill me-1"></i>entrada
+              </a>
+            {% endif %}
+            {% if r.lat_saida and r.lng_saida %}
+              · <a href="https://www.google.com/maps?q={{ r.lat_saida }},{{ r.lng_saida }}" target="_blank" rel="noopener">saída</a>
+            {% endif %}
+            {% if not (r.lat_entrada or r.lat_saida) %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center py-4 text-muted">Nenhum registro encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
